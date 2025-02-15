@@ -26,7 +26,8 @@ const LoginPage = () => {
           id: response.data.userId,
           email: response.data.email,
           fullName: response.data.fullName,
-          profileImage: response.data.profileImage, // Include profile image
+          profileImage: response.data.profileImage, 
+          phone: response.data.phone// Include profile image
         };
 
         localStorage.setItem("user", JSON.stringify(userData)); // Save user data to localStorage

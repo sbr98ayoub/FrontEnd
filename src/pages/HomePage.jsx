@@ -11,6 +11,7 @@ const HomePage = () => {
   const [activeSection, setActiveSection] = useState("dashboard");
   const [userName, setUserName] = useState("");
   const [userPhoto, setUserPhoto] = useState(null);
+  
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem("user"));
