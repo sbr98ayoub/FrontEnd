@@ -47,7 +47,13 @@ const GenerateQuiz = () => {
         throw new Error("Failed to generate quiz.");
       }
     } catch (error) {
-      console.error("Error generating quiz:", error);
+      console.error("Error generating quiz:", error.response?.data || error.message);
+      setModalMessage({
+        type: "error",
+        message: error.response?.data?.message || "Error generating quiz. Please try again.",
+        
+      });
+      setTimeout(() => handleGenerate(e), 3000);
     } finally {
       setIsGenerating(false);
     }
