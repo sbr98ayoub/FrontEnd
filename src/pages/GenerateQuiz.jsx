@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import CircularProgress from "@mui/material/CircularProgress";
 import api from "../api/api";
 import { UserContext } from "../context/UserContext";
@@ -6,11 +6,10 @@ import { UserContext } from "../context/UserContext";
 /**
  * GenerateQuiz Component
  * Enhancements:
- * - Customized progress bar with smooth transition
- * - Animated question card with a more distinctive style
- * - More elegant modals with subtle animations
- * - Maintains existing functionality (generate quiz, answer, store quiz)
- * - Respects your green-themed color palette & general styling
+ * - Adds a 20-second timer per question. If time runs out, the quiz auto-skips to the next question.
+ * - The overall quiz progress bar now starts at 0%.
+ * - A dedicated timer display and progress bar are shown for each question.
+ * - Retains existing functionality (generate quiz, answer, store quiz) with improved styling.
  */
 const GenerateQuiz = () => {
   // ------------------ State & Context ------------------
@@ -25,6 +24,30 @@ const GenerateQuiz = () => {
   const [quizComplete, setQuizComplete] = useState(false);
   const [quizResult, setQuizResult] = useState(null);
   const [modalMessage, setModalMessage] = useState(null);
+  // Timer state for each question (20 seconds)
+  const [timeLeft, setTimeLeft] = useState(20);
+
+  // ------------------ Effects ------------------
+
+  // Reset timer for each new question and auto-skip if time runs out.
+  useEffect(() => {
+    if (!questions.length || quizComplete) return;
+
+    setTimeLeft(20); // Reset timer for new question
+    const timerInterval = setInterval(() => {
+      setTimeLeft((prevTime) => {
+        if (prevTime <= 1) {
+          clearInterval(timerInterval);
+          // Auto-skip the question if time runs out.
+          handleAnswer("Skipped");
+          return 20;
+        }
+        return prevTime - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerInterval);
+  }, [currentQuestionIndex, questions, quizComplete]);
 
   // ------------------ Handlers ------------------
 
@@ -51,8 +74,8 @@ const GenerateQuiz = () => {
       setModalMessage({
         type: "error",
         message: error.response?.data?.message || "Error generating quiz. Please try again.",
-        
       });
+      // Optionally, automatically retry after a delay.
       setTimeout(() => handleGenerate(e), 3000);
     } finally {
       setIsGenerating(false);
@@ -64,6 +87,7 @@ const GenerateQuiz = () => {
    * Moves to the next question or marks quiz as complete.
    */
   const handleAnswer = (answer) => {
+    // Record the answer (it could be "Skipped")
     const updatedAnswers = {
       ...userAnswers,
       [questions[currentQuestionIndex].id]: answer,
@@ -141,11 +165,14 @@ const GenerateQuiz = () => {
   // ------------------ Render Helpers ------------------
 
   /**
-   * Render the question card with a smooth progress bar and improved styling.
+   * Render the question card with a smooth overall progress bar and a per-question timer.
    */
   const renderQuestion = () => {
     const question = questions[currentQuestionIndex];
-    const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+    // Overall quiz progress now starts at 0%
+    const overallProgress = (currentQuestionIndex / questions.length) * 100;
+    // Timer progress: how much time has elapsed out of 20 seconds
+    const timerProgress = ((20 - timeLeft) / 20) * 100;
 
     return (
       <div
@@ -162,7 +189,7 @@ const GenerateQuiz = () => {
           animate-fadeInSlideUp
         "
       >
-        {/* Question Header with progress */}
+        {/* Question Header with overall progress */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold text-green-800 mb-2 md:mb-0">
@@ -172,11 +199,24 @@ const GenerateQuiz = () => {
               {/* Additional info if desired */}
             </p>
           </div>
-          {/* Smooth Progress Bar */}
+          {/* Overall Quiz Progress Bar */}
           <div className="w-full md:w-1/2 bg-gray-300 rounded-full mt-4 md:mt-0 overflow-hidden shadow-inner">
             <div
               className="bg-green-500 h-3 rounded-full transition-all duration-700 ease-in-out"
-              style={{ width: `${progress}%` }}
+              style={{ width: `${overallProgress}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Timer Display & Timer Progress Bar */}
+        <div className="mb-4">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-sm text-gray-600">Time Remaining: {timeLeft} sec</span>
+          </div>
+          <div className="w-full bg-gray-300 rounded-full overflow-hidden shadow-inner">
+            <div
+              className="bg-red-500 h-3 rounded-full transition-all duration-1000 ease-linear"
+              style={{ width: `${timerProgress}%` }}
             ></div>
           </div>
         </div>
@@ -514,24 +554,3 @@ const GenerateQuiz = () => {
 };
 
 export default GenerateQuiz;
-
-/* 
-  OPTIONAL EXTRA STYLES:
-  You can add these animations to your Tailwind config or a separate CSS:
-  
-  @keyframes fadeIn {
-    0% { opacity: 0; }
-    100% { opacity: 1; }
-  }
-  .animate-fadeIn {
-    animation: fadeIn 0.5s ease forwards;
-  }
-
-  @keyframes fadeInSlideUp {
-    0% { opacity: 0; transform: translateY(30px); }
-    100% { opacity: 1; transform: translateY(0); }
-  }
-  .animate-fadeInSlideUp {
-    animation: fadeInSlideUp 0.6s ease forwards;
-  }
-*/

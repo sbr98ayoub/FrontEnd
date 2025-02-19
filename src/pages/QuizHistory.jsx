@@ -4,6 +4,30 @@ import { UserContext } from "../context/UserContext";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 
+// Helper function to convert an image URL to a Base64 string
+const getBase64ImageFromUrl = async (imageUrl) => {
+  const res = await fetch(imageUrl);
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(blob);
+  });
+};
+
+// Helper function to determine image type from URL
+const getImageTypeFromUrl = (imageUrl) => {
+  if (!imageUrl) return "PNG";
+  const lowerUrl = imageUrl.toLowerCase();
+  if (lowerUrl.endsWith(".png")) {
+    return "PNG";
+  } else if (lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg")) {
+    return "JPEG";
+  }
+  return "PNG";
+};
+
 const QuizHistory = () => {
   const { user } = useContext(UserContext);
   const [quizHistory, setQuizHistory] = useState([]);
@@ -64,34 +88,108 @@ const QuizHistory = () => {
     }
   };
 
-  const closeDetails = () => {
-    setSelectedQuiz(null);
-    setQuizDetails([]);
-    setQuizMetadata({});
-  };
+  // const closeDetails = () => {
+  //   setSelectedQuiz(null);
+  //   setQuizDetails([]);
+  //   setQuizMetadata({});
+  // };
 
-  const downloadPDF = () => {
+  /**
+   * Download PDF of the quiz details.
+   * - Loads a logo and the current user's profile image from the public folder.
+   * - Adds enhanced header details (User info and Quiz metadata) with custom fonts.
+   * - Inserts a table of quiz questions with conditional styling for the answers.
+   */
+  const downloadPDF = async () => {
     const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text("Quiz Details", 14, 16);
-    doc.setFontSize(12);
-    doc.text(`Programming Language: ${quizMetadata.language}`, 14, 25);
-    doc.text(`Date: ${quizMetadata.date}`, 14, 30);
-    doc.text(`Score: ${quizMetadata.score}%`, 14, 35);
+    const pageWidth = doc.internal.pageSize.getWidth();
 
+    // --- Add Logo ---
+    const logoUrl = `${process.env.PUBLIC_URL}/images/logoEmsi.png`;
+    let logoBase64 = "";
+    try {
+      logoBase64 = await getBase64ImageFromUrl(logoUrl);
+    } catch (error) {
+      console.error("Error loading logo image:", error);
+    }
+    if (logoBase64 && logoBase64.startsWith("data:image") && logoBase64.length > 100) {
+      // Place the logo at the top right
+      doc.addImage(logoBase64, "PNG", pageWidth - 50, 10, 40, 20);
+    } else {
+      console.warn("Logo image data is missing or incomplete. Skipping logo.");
+    }
+
+    // --- Add User Profile Picture ---
+    let profilePicBase64 = "";
+    if (user?.profileImage) {
+      // If profileImage is not a full URL, assume it's relative to public/images
+      const profileImageUrl = user.profileImage.startsWith("http")
+        ? user.profileImage
+        : `${process.env.PUBLIC_URL}/images/${user.profileImage}`;
+      try {
+        profilePicBase64 = await getBase64ImageFromUrl(profileImageUrl);
+      } catch (error) {
+        console.error("Error loading profile image:", error);
+      }
+    }
+    if (profilePicBase64 && profilePicBase64.startsWith("data:image") && profilePicBase64.length > 100) {
+      const imageType = getImageTypeFromUrl(user.profileImage);
+      // Place the profile picture at the top left
+      doc.addImage(profilePicBase64, imageType, 10, 10, 30, 30);
+    } else {
+      console.warn("Profile image data is missing or incomplete. Skipping profile image.");
+    }
+
+    // --- Set Header Fonts and Title ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("Quiz Report", pageWidth / 2, 40, { align: "center" });
+
+    // --- Add User & Quiz Details ---
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    // Left Column: User Information
+    doc.text(`Name: ${user?.fullName || "N/A"}`, 14, 50);
+    doc.text(`Email: ${user?.email || "N/A"}`, 14, 56);
+    if (user?.phone) {
+      doc.text(`Phone: ${user.phone}`, 14, 62);
+    }
+    // Right Column: Quiz Metadata
+    doc.text(`Programming Language: ${quizMetadata.language}`, pageWidth / 2 + 10, 50);
+    doc.text(`Date: ${quizMetadata.date}`, pageWidth / 2 + 10, 56);
+    doc.text(`Score: ${quizMetadata.score}%`, pageWidth / 2 + 10, 62);
+    doc.line(14, 66, pageWidth - 14, 66); // Horizontal line
+
+    // --- Prepare Table Data ---
     const tableData = quizDetails.map((detail) => [
       detail.question,
       detail.yourAnswer,
       detail.correctAnswer,
     ]);
 
+    // --- Add Table with Enhanced Design ---
     doc.autoTable({
       head: [["Question", "Your Answer", "Correct Answer"]],
       body: tableData,
-      startY: 40,
+      startY: 72,
       theme: "grid",
+      headStyles: { fillColor: [46, 204, 113], textColor: 255, halign: "center" },
+      styles: { fontSize: 10 },
+      didParseCell: function (data) {
+        if (data.section === "body" && data.column.index === 1) {
+          const yourAnswer = data.row.raw[1];
+          const correctAnswer = data.row.raw[2];
+          if (yourAnswer === correctAnswer) {
+            data.cell.styles.fillColor = [198, 239, 206]; // light green
+          } else {
+            data.cell.styles.fillColor = [255, 199, 206]; // light red
+          }
+        }
+      },
     });
-    doc.save("quiz-details.pdf");
+
+    // --- Save the PDF ---
+    doc.save("quiz-report.pdf");
   };
 
   return (
@@ -167,7 +265,11 @@ const QuizHistory = () => {
               <h3 className="text-3xl font-bold text-green-700">Quiz Details</h3>
               <button
                 className="text-gray-600 hover:text-red-600 font-bold text-lg"
-                onClick={closeDetails}
+                onClick={() => {
+                  setSelectedQuiz(null);
+                  setQuizDetails([]);
+                  setQuizMetadata({});
+                }}
               >
                 ✖ Close
               </button>
@@ -182,6 +284,17 @@ const QuizHistory = () => {
               <p className="text-gray-800">
                 <strong>Score:</strong> {Math.round(quizMetadata.score)}%
               </p>
+              <p className="text-gray-800">
+                <strong>User Name:</strong> {user?.fullName || "N/A"}
+              </p>
+              <p className="text-gray-800">
+                <strong>Email:</strong> {user?.email || "N/A"}
+              </p>
+              {user?.phone && (
+                <p className="text-gray-800">
+                  <strong>Phone:</strong> {user.phone}
+                </p>
+              )}
             </div>
             <ul className="space-y-6">
               {quizDetails.map((detail, index) => (
