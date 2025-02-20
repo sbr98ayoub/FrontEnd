@@ -73,7 +73,7 @@ const GenerateQuiz = () => {
       console.error("Error generating quiz:", error.response?.data || error.message);
       setModalMessage({
         type: "error",
-        message: error.response?.data?.message || "Error generating quiz. Please try again.",
+        message:  "Error generating quiz. Please try again.",
       });
       // Optionally, automatically retry after a delay.
       setTimeout(() => handleGenerate(e), 3000);

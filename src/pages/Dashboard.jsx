@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { Line, Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -11,6 +11,8 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import api from "../api/api";
+import { UserContext } from "../context/UserContext";
 
 ChartJS.register(
   CategoryScale,
@@ -24,30 +26,102 @@ ChartJS.register(
 );
 
 const Dashboard = () => {
-  const lineChartData = {
-    labels: ["January", "February", "March", "April", "May"],
-    datasets: [
-      {
-        label: "Quiz Completion Trends",
-        data: [10, 15, 8, 20, 25],
-        borderColor: "#38a169",
-        backgroundColor: "rgba(56, 161, 105, 0.2)",
-        tension: 0.4,
-        fill: true,
-      },
-    ],
-  };
+  const { user } = useContext(UserContext);
+  const [lineChartData, setLineChartData] = useState(null);
+  const [barChartData, setBarChartData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const barChartData = {
-    labels: ["HTML", "CSS", "JavaScript", "React", "Node.js"],
-    datasets: [
-      {
-        label: "Performance by Topic",
-        data: [80, 90, 70, 85, 60],
-        backgroundColor: ["#68d391", "#48bb78", "#38a169", "#2f855a", "#22543d"],
-      },
-    ],
-  };
+  // Fetch dashboard data from backend endpoint
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const response = await api.get("/quiz/dashboard", {
+          params: { userId: user?.id },
+        });
+        if (response.status === 200) {
+          const dashboardData = response.data;
+          // Extract and transform the "completionTrends" data.
+          // Assume backend returns an object with keys as month names and values as counts.
+          const monthOrder = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+          ];
+          const completionTrends = dashboardData.completionTrends || {};
+          const sortedMonths = Object.keys(completionTrends).sort(
+            (a, b) => monthOrder.indexOf(a) - monthOrder.indexOf(b)
+          );
+          const lineData = {
+            labels: sortedMonths,
+            datasets: [
+              {
+                label: "Quiz Completion Trends",
+                data: sortedMonths.map((month) => completionTrends[month]),
+                borderColor: "#38a169",
+                backgroundColor: "rgba(56, 161, 105, 0.2)",
+                tension: 0.4,
+                fill: true,
+              },
+            ],
+          };
+
+          // Extract and transform the "performanceByTopic" data.
+          // Assume backend returns an object with programming languages as keys and average scores as values.
+          const performanceByTopic = dashboardData.performanceByTopic || {};
+          const topics = Object.keys(performanceByTopic);
+          const barData = {
+            labels: topics,
+            datasets: [
+              {
+                label: "Performance by Topic",
+                data: topics.map((topic) => performanceByTopic[topic]),
+                backgroundColor: topics.map((_, index) => {
+                  const colors = [
+                    "#68d391",
+                    "#48bb78",
+                    "#38a169",
+                    "#2f855a",
+                    "#22543d",
+                  ];
+                  return colors[index % colors.length];
+                }),
+              },
+            ],
+          };
+
+          setLineChartData(lineData);
+          setBarChartData(barData);
+        } else {
+          setError("Failed to fetch dashboard data.");
+        }
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err);
+        setError("Error fetching dashboard data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user && user.id) {
+      fetchDashboardData();
+    }
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p>Loading dashboard data...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-red-500">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white p-8 rounded-lg shadow-lg space-y-8">
@@ -56,9 +130,7 @@ const Dashboard = () => {
         <h2 className="text-4xl font-extrabold text-gray-800">
           Welcome to Your <span className="text-green-600">Dashboard</span>!
         </h2>
-        <p className="text-lg text-gray-600">
-          Here's what you can do:
-        </p>
+        <p className="text-lg text-gray-600">Here's what you can do:</p>
         <div className="flex justify-center space-x-8">
           <p className="bg-green-100 px-4 py-2 rounded-lg shadow hover:bg-green-200 transition">
             📊 <strong>Track your quiz scores and history.</strong>
@@ -79,7 +151,7 @@ const Dashboard = () => {
           <h3 className="text-lg font-bold text-green-600 mb-4 text-center">
             Quiz Completion Trends
           </h3>
-          <Line data={lineChartData} />
+          {lineChartData && <Line data={lineChartData} />}
         </div>
 
         {/* Bar Chart */}
@@ -87,7 +159,7 @@ const Dashboard = () => {
           <h3 className="text-lg font-bold text-green-600 mb-4 text-center">
             Performance by Topic
           </h3>
-          <Bar data={barChartData} />
+          {barChartData && <Bar data={barChartData} />}
         </div>
       </div>
 
@@ -109,7 +181,7 @@ const Dashboard = () => {
 
       {/* Call to Action */}
       <div className="text-center">
-        <button className="bg-green-600 text-white px-8 py-3 rounded-lg shadow-lg hover:bg-green-700 transition " hre>
+        <button className="bg-green-600 text-white px-8 py-3 rounded-lg shadow-lg hover:bg-green-700 transition">
           Start a New Quiz
         </button>
       </div>

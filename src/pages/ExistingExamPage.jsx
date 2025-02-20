@@ -630,7 +630,7 @@ const ExistingExamsPage = () => {
         <div className="absolute inset-0 bg-green-900 bg-opacity-50" />
         <div className="relative z-10 text-center text-white px-4">
           <h1 className="text-5xl font-extrabold mb-4 drop-shadow-lg">
-            Welcome to Knowledge Hub
+            Welcome to EMSI-PREPARATOR
           </h1>
           <p className="max-w-2xl mx-auto mb-8 text-lg leading-relaxed">
             Your one-stop platform for comprehensive exams, practice tests, and
@@ -839,7 +839,7 @@ const ExistingExamsPage = () => {
       */}
       <footer className="bg-green-100 py-8 text-center mt-12">
         <p className="text-gray-700 mb-2">
-          &copy; {new Date().getFullYear()} Knowledge Hub. All rights reserved.
+          &copy; {new Date().getFullYear()} EMSI-PREPARATOR. All rights reserved.
         </p>
         <p className="text-gray-500 text-sm">
           Built with{' '}

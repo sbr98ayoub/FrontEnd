@@ -1,15 +1,16 @@
-import React, { useState, useContext, useEffect, useRef } from "react";
+import React, { useState, useContext } from "react";
 import { UserContext } from "../context/UserContext";
 import SuccessModal from "../components/sucessModal";
 
 const Profile = () => {
-  const { user, login} = useContext(UserContext);
+  const { user, login } = useContext(UserContext);
 
   const [userData, setUserData] = useState({
     fullName: user?.fullName || "",
     email: user?.email || "",
     phone: user?.phone || "",
     password: "",
+    // Show full URL for display in the Profile page
     profileImage: user?.profileImage
       ? `http://localhost:9090/profile-images/${user.profileImage}`
       : null,
@@ -25,7 +26,7 @@ const Profile = () => {
     setUserData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handle new profile picture
+  // Handle new profile picture selection
   const handleProfilePictureChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -33,7 +34,7 @@ const Profile = () => {
     }
   };
 
-  // Save profile changes
+  // Save profile changes and update the user in context and localStorage
   const handleSave = () => {
     const formData = new FormData();
     formData.append("userId", user.id);
@@ -58,29 +59,27 @@ const Profile = () => {
     })
       .then((response) => {
         if (!response.ok) {
-          return response.json().then((err) => {
-            throw new Error(err.error || "Failed to update profile.");
-          });
+          throw new Error("Profile update failed.");
         }
         return response.json();
       })
-      .then((data) => {
-        console.log("Profile updated successfully:", data);
-        setEditing(false);
-        setShowModal(true);
+      .then((updatedUserFromServer) => {
+        // Assume backend returns profileImage as filename, e.g. "1_newFile.jpg"
+        const updatedProfileImage = updatedUserFromServer.profileImage || null;
 
-        // Update the UserContext with new data
+        // Build updated user object to store (store only the filename)
         const updatedUser = {
           ...user,
-          fullName: userData.fullName,
-          email: userData.email,
-          phone: userData.phone,
-          profileImage:
-            profilePicture instanceof File
-              ? URL.createObjectURL(profilePicture)
-              : user.profileImage,
+          fullName: updatedUserFromServer.fullName,
+          email: updatedUserFromServer.email,
+          phone: updatedUserFromServer.phone,
+          profileImage: updatedProfileImage,
         };
+
+        // Update the global UserContext and localStorage
         login(updatedUser);
+        setEditing(false);
+        setShowModal(true);
       })
       .catch((error) => {
         console.error("Error updating profile:", error);
@@ -90,8 +89,7 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-tr from-green-100 via-white to-green-50 relative overflow-hidden">
-
-      {/** Top Wave Divider */}
+      {/* Top Wave Divider */}
       <div className="absolute top-0 left-0 w-full overflow-hidden leading-[0]">
         <svg
           className="relative block w-[calc(200%+1.3px)] h-40"
@@ -102,22 +100,19 @@ const Profile = () => {
           <path
             d="M985.66 16.63c-73.32 0-135.54 
                31.48-186.52 61.91-51 30.43-99.29 
-               59.21-166.8 59.21-67.63 0-113.94
-               -26.03-160.77-52.2-46.05-25.78
-               -89.57-50.16-154.37-50.16
-               -65.43 0-115.72 24.38
-               -163.71 51.8-48.53 27.77
-               -95.16 54.45-167.69 54.45
-               V120H1200V0c-64.35 
+               59.21-166.8 59.21-67.63 0-113.94-26.03
+               -160.77-52.2-46.05-25.78-89.57-50.16
+               -154.37-50.16-65.43 0-115.72 24.38
+               -163.71 51.8-48.53 27.77-95.16 
+               54.45-167.69 54.45V120H1200V0c-64.35 
                0-119.84 16.63-214.34 16.63z"
             fill="#FFFFFF"
           />
         </svg>
       </div>
 
-      {/** Main Content Container */}
+      {/* Main Content */}
       <div className="relative z-10 container mx-auto p-8">
-        {/** “Header” / Introduction (no more “heelo med said”) */}
         <div className="text-center mb-10">
           <h1 className="text-4xl font-extrabold text-green-700 mb-2 drop-shadow-sm">
             Manage Your Profile
@@ -127,15 +122,12 @@ const Profile = () => {
           </p>
         </div>
 
-        {/** Profile Card */}
+        {/* Profile Card */}
         <div className="bg-white p-10 rounded-xl shadow-2xl max-w-4xl mx-auto">
           <div className="flex flex-col md:flex-row md:justify-between md:items-start">
-            {/** Left: Profile Picture */}
+            {/* Left: Profile Picture */}
             <div className="flex flex-col items-center mb-6 md:mb-0 md:mr-8">
-              <div
-                className="w-44 h-44 rounded-full border-4 border-green-500 shadow-md overflow-hidden mb-4
-                           transform hover:scale-105 transition-transform duration-300"
-              >
+              <div className="w-44 h-44 rounded-full border-4 border-green-500 shadow-md overflow-hidden mb-4 transform hover:scale-105 transition-transform duration-300">
                 {profilePicture ? (
                   <img
                     src={
@@ -152,13 +144,10 @@ const Profile = () => {
                   </div>
                 )}
               </div>
-
               {editing && (
                 <label
                   htmlFor="profilePictureInput"
-                  className="bg-green-500 hover:bg-green-600 text-white py-2 px-6 
-                             rounded-lg shadow-lg cursor-pointer transition 
-                             duration-300 hover:scale-105"
+                  className="bg-green-500 hover:bg-green-600 text-white py-2 px-6 rounded-lg shadow-lg cursor-pointer transition duration-300 hover:scale-105"
                 >
                   Change Picture
                   <input
@@ -172,13 +161,10 @@ const Profile = () => {
               )}
             </div>
 
-            {/** Right: Form Fields */}
+            {/* Right: Form Fields */}
             <form className="w-full space-y-6 md:flex-1">
               <div>
-                <label
-                  htmlFor="fullName"
-                  className="block text-sm font-medium text-gray-700"
-                >
+                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
                   Full Name
                 </label>
                 <input
@@ -189,17 +175,12 @@ const Profile = () => {
                   onChange={handleChange}
                   disabled={!editing}
                   className={`mt-2 p-3 block w-full rounded-md border focus:outline-none focus:ring-2 focus:ring-green-200 ${
-                    editing
-                      ? "border-gray-300 bg-white"
-                      : "border-gray-200 bg-gray-100"
+                    editing ? "border-gray-300 bg-white" : "border-gray-200 bg-gray-100"
                   }`}
                 />
               </div>
               <div>
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-medium text-gray-700"
-                >
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                   Email Address
                 </label>
                 <input
@@ -210,17 +191,12 @@ const Profile = () => {
                   onChange={handleChange}
                   disabled={!editing}
                   className={`mt-2 p-3 block w-full rounded-md border focus:outline-none focus:ring-2 focus:ring-green-200 ${
-                    editing
-                      ? "border-gray-300 bg-white"
-                      : "border-gray-200 bg-gray-100"
+                    editing ? "border-gray-300 bg-white" : "border-gray-200 bg-gray-100"
                   }`}
                 />
               </div>
               <div>
-                <label
-                  htmlFor="phone"
-                  className="block text-sm font-medium text-gray-700"
-                >
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
                   Phone Number
                 </label>
                 <input
@@ -231,17 +207,12 @@ const Profile = () => {
                   onChange={handleChange}
                   disabled={!editing}
                   className={`mt-2 p-3 block w-full rounded-md border focus:outline-none focus:ring-2 focus:ring-green-200 ${
-                    editing
-                      ? "border-gray-300 bg-white"
-                      : "border-gray-200 bg-gray-100"
+                    editing ? "border-gray-300 bg-white" : "border-gray-200 bg-gray-100"
                   }`}
                 />
               </div>
               <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-gray-700"
-                >
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                   Password
                 </label>
                 <input
@@ -253,22 +224,19 @@ const Profile = () => {
                   onChange={handleChange}
                   disabled={!editing}
                   className={`mt-2 p-3 block w-full rounded-md border focus:outline-none focus:ring-2 focus:ring-green-200 ${
-                    editing
-                      ? "border-gray-300 bg-white"
-                      : "border-gray-200 bg-gray-100"
+                    editing ? "border-gray-300 bg-white" : "border-gray-200 bg-gray-100"
                   }`}
                 />
               </div>
             </form>
           </div>
 
-          {/** Buttons */}
+          {/* Buttons */}
           <div className="flex justify-end mt-8 space-x-4">
             {!editing ? (
               <button
                 onClick={() => setEditing(true)}
-                className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-6 
-                           rounded-lg shadow-lg transition duration-300 hover:scale-105"
+                className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-6 rounded-lg shadow-lg transition duration-300 hover:scale-105"
               >
                 Edit Profile
               </button>
@@ -276,34 +244,23 @@ const Profile = () => {
               <>
                 <button
                   onClick={handleSave}
-                  className="bg-green-500 hover:bg-green-600 text-white py-2 px-6 
-                             rounded-lg shadow-lg transition duration-300 hover:scale-105"
+                  className="bg-green-500 hover:bg-green-600 text-white py-2 px-6 rounded-lg shadow-lg transition duration-300 hover:scale-105"
                 >
                   Save Changes
                 </button>
                 <button
                   onClick={() => setEditing(false)}
-                  className="bg-gray-500 hover:bg-gray-600 text-white py-2 px-6 
-                             rounded-lg shadow-lg transition duration-300 hover:scale-105"
+                  className="bg-gray-500 hover:bg-gray-600 text-white py-2 px-6 rounded-lg shadow-lg transition duration-300 hover:scale-105"
                 >
                   Cancel
                 </button>
               </>
             )}
           </div>
-
-          {/* <button
-            onClick={logout}
-            className="bg-red-500 hover:bg-red-600 text-white py-2 px-6 
-                       mt-4 rounded-lg shadow-lg transition duration-300 
-                       hover:scale-105"
-          >
-            Log Out
-          </button> */}
         </div>
       </div>
 
-      {/** Bottom Wave Divider */}
+      {/* Bottom Wave Divider */}
       <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-[0] rotate-180">
         <svg
           className="relative block w-[calc(200%+1.3px)] h-40"
@@ -325,7 +282,6 @@ const Profile = () => {
         </svg>
       </div>
 
-      {/** Success Modal */}
       {showModal && (
         <SuccessModal
           message="Your profile has been updated successfully!"

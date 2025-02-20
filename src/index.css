@@ -65,6 +65,12 @@ code {
 .modal-content {
   animation: fadeIn 0.3s ease-in-out;
 }
+.green-emoji {
+  display: inline-block;
+  /* Tweak these values to get your desired shade of green */
+  filter: invert(36%) sepia(83%) saturate(4193%) hue-rotate(77deg) brightness(93%) contrast(92%);
+}
+
 
 @keyframes fadeIn {
   from {

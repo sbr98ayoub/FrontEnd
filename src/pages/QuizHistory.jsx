@@ -2,9 +2,13 @@ import React, { useEffect, useState, useContext } from "react";
 import api from "../api/api";
 import { UserContext } from "../context/UserContext";
 import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+import "jspdf-autotable"; // optional import, not used here
 
-// Helper function to convert an image URL to a Base64 string
+/***********************************************************
+ * HELPER FUNCTIONS
+ * - getBase64ImageFromUrl
+ * - getImageTypeFromUrl
+ ***********************************************************/
 const getBase64ImageFromUrl = async (imageUrl) => {
   const res = await fetch(imageUrl);
   const blob = await res.blob();
@@ -16,18 +20,17 @@ const getBase64ImageFromUrl = async (imageUrl) => {
   });
 };
 
-// Helper function to determine image type from URL
 const getImageTypeFromUrl = (imageUrl) => {
   if (!imageUrl) return "PNG";
   const lowerUrl = imageUrl.toLowerCase();
-  if (lowerUrl.endsWith(".png")) {
-    return "PNG";
-  } else if (lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg")) {
-    return "JPEG";
-  }
+  if (lowerUrl.endsWith(".png")) return "PNG";
+  if (lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg")) return "JPEG";
   return "PNG";
 };
 
+/***********************************************************
+ * QUIZ HISTORY COMPONENT
+ ***********************************************************/
 const QuizHistory = () => {
   const { user } = useContext(UserContext);
   const [quizHistory, setQuizHistory] = useState([]);
@@ -37,6 +40,9 @@ const QuizHistory = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  /***********************************************************
+   * Fetch Quiz History
+   ***********************************************************/
   useEffect(() => {
     const fetchQuizHistory = async () => {
       setLoading(true);
@@ -44,7 +50,7 @@ const QuizHistory = () => {
         const response = await api.get("/quiz/history", {
           params: { userId: user?.id },
         });
-        // Round and display only the integer part of the score
+        // Round & display only integer part of the score
         const updatedHistory = response.data.map((quiz) => ({
           ...quiz,
           score: Math.round(quiz.score),
@@ -62,6 +68,9 @@ const QuizHistory = () => {
     }
   }, [user]);
 
+  /***********************************************************
+   * Fetch Quiz Details
+   ***********************************************************/
   const fetchQuizDetails = async (quizId, metadata) => {
     setLoading(true);
     setError("");
@@ -69,7 +78,6 @@ const QuizHistory = () => {
       const response = await api.get("/quiz/details", {
         params: { quizId, userId: user?.id },
       });
-
       setQuizDetails(
         response.data.map((detail) => ({
           question: detail.question,
@@ -88,41 +96,35 @@ const QuizHistory = () => {
     }
   };
 
-  // const closeDetails = () => {
-  //   setSelectedQuiz(null);
-  //   setQuizDetails([]);
-  //   setQuizMetadata({});
-  // };
-
-  /**
-   * Download PDF of the quiz details.
-   * - Loads a logo and the current user's profile image from the public folder.
-   * - Adds enhanced header details (User info and Quiz metadata) with custom fonts.
-   * - Inserts a table of quiz questions with conditional styling for the answers.
-   */
+  /***********************************************************
+   * PDF GENERATION
+   * - Eliminates the setTextColor array usage
+   * - Enhances the design (background shapes, question "cards")
+   ***********************************************************/
   const downloadPDF = async () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
+    // Create a new jsPDF instance
+    const doc = new jsPDF({
+      orientation: "p",
+      unit: "pt",
+      format: "a4", // standard paper
+    });
 
-    // --- Add Logo ---
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    /***********************************************
+     * 1) Load Images (Logo + Profile)
+     ***********************************************/
     const logoUrl = `${process.env.PUBLIC_URL}/images/logoEmsi.png`;
     let logoBase64 = "";
     try {
       logoBase64 = await getBase64ImageFromUrl(logoUrl);
-    } catch (error) {
-      console.error("Error loading logo image:", error);
-    }
-    if (logoBase64 && logoBase64.startsWith("data:image") && logoBase64.length > 100) {
-      // Place the logo at the top right
-      doc.addImage(logoBase64, "PNG", pageWidth - 50, 10, 40, 20);
-    } else {
-      console.warn("Logo image data is missing or incomplete. Skipping logo.");
+    } catch (e) {
+      console.error("Error loading EMSI logo:", e);
     }
 
-    // --- Add User Profile Picture ---
     let profilePicBase64 = "";
     if (user?.profileImage) {
-      // If profileImage is not a full URL, assume it's relative to public/images
       const profileImageUrl = user.profileImage.startsWith("http")
         ? user.profileImage
         : `${process.env.PUBLIC_URL}/images/${user.profileImage}`;
@@ -132,210 +134,468 @@ const QuizHistory = () => {
         console.error("Error loading profile image:", error);
       }
     }
-    if (profilePicBase64 && profilePicBase64.startsWith("data:image") && profilePicBase64.length > 100) {
-      const imageType = getImageTypeFromUrl(user.profileImage);
-      // Place the profile picture at the top left
-      doc.addImage(profilePicBase64, imageType, 10, 10, 30, 30);
-    } else {
-      console.warn("Profile image data is missing or incomplete. Skipping profile image.");
-    }
 
-    // --- Set Header Fonts and Title ---
+    /***********************************************
+     * 2) Background
+     ***********************************************/
+    doc.setFillColor(240, 245, 255); // pastel bluish
+    doc.rect(0, 0, pageWidth, pageHeight, "F");
+
+    doc.setFillColor(229, 255, 229); // pale green
+    doc.circle(80, 60, 50, "F");
+
+    doc.setFillColor(255, 236, 179); // pale yellow
+    doc.circle(pageWidth - 60, pageHeight - 80, 60, "F");
+
+    /***********************************************
+     * 3) Title "Quiz Report" & Logo
+     ***********************************************/
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text("Quiz Report", pageWidth / 2, 40, { align: "center" });
+    doc.setFontSize(26);
+    doc.setTextColor(70, 70, 70);
+    doc.text("Quiz Report", pageWidth / 2, 60, { align: "center" });
 
-    // --- Add User & Quiz Details ---
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    // Left Column: User Information
-    doc.text(`Name: ${user?.fullName || "N/A"}`, 14, 50);
-    doc.text(`Email: ${user?.email || "N/A"}`, 14, 56);
-    if (user?.phone) {
-      doc.text(`Phone: ${user.phone}`, 14, 62);
+    if (logoBase64) {
+      doc.addImage(logoBase64, "PNG", pageWidth - 120, 20, 100, 30);
     }
-    // Right Column: Quiz Metadata
-    doc.text(`Programming Language: ${quizMetadata.language}`, pageWidth / 2 + 10, 50);
-    doc.text(`Date: ${quizMetadata.date}`, pageWidth / 2 + 10, 56);
-    doc.text(`Score: ${quizMetadata.score}%`, pageWidth / 2 + 10, 62);
-    doc.line(14, 66, pageWidth - 14, 66); // Horizontal line
 
-    // --- Prepare Table Data ---
-    const tableData = quizDetails.map((detail) => [
-      detail.question,
-      detail.yourAnswer,
-      detail.correctAnswer,
-    ]);
+    let contentY = 100; // vertical offset
 
-    // --- Add Table with Enhanced Design ---
-    doc.autoTable({
-      head: [["Question", "Your Answer", "Correct Answer"]],
-      body: tableData,
-      startY: 72,
-      theme: "grid",
-      headStyles: { fillColor: [46, 204, 113], textColor: 255, halign: "center" },
-      styles: { fontSize: 10 },
-      didParseCell: function (data) {
-        if (data.section === "body" && data.column.index === 1) {
-          const yourAnswer = data.row.raw[1];
-          const correctAnswer = data.row.raw[2];
-          if (yourAnswer === correctAnswer) {
-            data.cell.styles.fillColor = [198, 239, 206]; // light green
-          } else {
-            data.cell.styles.fillColor = [255, 199, 206]; // light red
-          }
-        }
-      },
+    /***********************************************
+     * 4) Profile "Card"
+     ***********************************************/
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(40, contentY, pageWidth - 80, 120, 10, 10, "F");
+
+    // If we have a user profile pic
+    if (
+      profilePicBase64 &&
+      profilePicBase64.startsWith("data:image") &&
+      profilePicBase64.length > 100
+    ) {
+      const imageType = getImageTypeFromUrl(user.profileImage);
+      doc.setFillColor(230, 230, 230);
+      doc.circle(80, contentY + 60, 40, "F");
+      doc.addImage(profilePicBase64, imageType, 40, contentY + 20, 80, 80);
+    }
+
+    // Profile text
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(40, 40, 40);
+
+    let textX = 140;
+    let textY = contentY + 40;
+    doc.text(`Name: ${user?.fullName || "N/A"}`, textX, textY);
+    textY += 20;
+    doc.setFont("helvetica", "normal");
+    doc.text(`Email: ${user?.email || "N/A"}`, textX, textY);
+    textY += 20;
+    if (user?.phone) {
+      doc.text(`Phone: ${user.phone}`, textX, textY);
+      textY += 20;
+    }
+    contentY += 140; // move below card
+
+    /***********************************************
+     * 5) Quiz Meta "Card"
+     ***********************************************/
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(40, contentY, pageWidth - 80, 80, 10, 10, "F");
+
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(40, 40, 40);
+
+    let metaX = 60;
+    let metaY = contentY + 30;
+    doc.text("Quiz Information:", metaX, metaY);
+    doc.setDrawColor(100, 100, 100);
+    doc.setLineWidth(1);
+    doc.line(metaX, metaY + 5, metaX + 120, metaY + 5);
+
+    doc.setFont("helvetica", "normal");
+    metaY += 25;
+    doc.text(`Programming Language: ${quizMetadata.language}`, metaX, metaY);
+    metaY += 18;
+    doc.text(`Date: ${quizMetadata.date}`, metaX, metaY);
+    metaY += 18;
+    doc.text(`Score: ${quizMetadata.score}%`, metaX, metaY);
+
+    contentY += 100; // move below meta card
+
+    /***********************************************
+     * 6) Questions & Answers
+     ***********************************************/
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(40, 40, 40);
+
+    contentY += 20;
+    doc.text("Questions & Answers", 50, contentY);
+    doc.line(50, contentY + 3, 200, contentY + 3);
+
+    contentY += 20;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+
+    const leftMargin = 50;
+    const cardWidth = pageWidth - leftMargin * 2;
+    const cardPadding = 10;
+
+    quizDetails.forEach((detail, index) => {
+      // Page break if needed
+      if (contentY + 120 > pageHeight) {
+        doc.addPage();
+        contentY = 50;
+      }
+
+      const correct = detail.yourAnswer === detail.correctAnswer;
+      if (correct) {
+        doc.setFillColor(220, 255, 220); // green
+      } else {
+        doc.setFillColor(255, 220, 220); // red
+      }
+
+      doc.roundedRect(leftMargin, contentY, cardWidth, 90, 8, 8, "F");
+
+      // Title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(50, 50, 50);
+      doc.text(
+        `Question #${index + 1}`,
+        leftMargin + cardPadding,
+        contentY + 20
+      );
+
+      // Question text
+      const questionText = doc.splitTextToSize(
+        `Q: ${detail.question}`,
+        cardWidth - cardPadding * 2
+      );
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(12);
+      doc.setTextColor(30, 30, 30);
+      doc.text(questionText, leftMargin + cardPadding, contentY + 40);
+
+      let answerY = contentY + 40 + questionText.length * 12 + 10;
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(60, 60, 60);
+      doc.text(`Your Answer: `, leftMargin + cardPadding, answerY);
+      doc.setFont("helvetica", "normal");
+
+      // FIX: use separate (r, g, b) args, NOT array
+      if (correct) {
+        doc.setTextColor(0, 150, 0); // green
+      } else {
+        doc.setTextColor(200, 0, 0); // red
+      }
+      doc.text(detail.yourAnswer, leftMargin + cardPadding + 70, answerY);
+
+      answerY += 16;
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(60, 60, 60);
+      doc.text(`Correct Answer: `, leftMargin + cardPadding, answerY);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(0, 100, 180);
+      doc.text(detail.correctAnswer, leftMargin + cardPadding + 90, answerY);
+
+      contentY += 100;
     });
 
-    // --- Save the PDF ---
+    if (quizDetails.length === 0) {
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(12);
+      doc.setTextColor(120, 120, 120);
+      doc.text("No questions found.", 50, contentY + 20);
+    }
+
+    /***********************************************
+     * 7) Footer
+     ***********************************************/
+    if (contentY + 60 > pageHeight) {
+      doc.addPage();
+      contentY = 50;
+    }
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(80, 80, 80);
+    doc.text(
+      `© ${new Date().getFullYear()} EMSI Preparator. All rights reserved.`,
+      50,
+      pageHeight - 40
+    );
+
+    // Save the PDF
     doc.save("quiz-report.pdf");
   };
 
+  /***********************************************************
+   * RENDER COMPONENT
+   ***********************************************************/
   return (
-    <div className="bg-gradient-to-b from-green-50 to-green-100 min-h-screen p-8">
-      <div className="bg-white p-8 rounded-lg shadow-xl">
-        <h2 className="text-4xl font-bold text-green-700 mb-6 text-center">
-          🎓 Your Quiz History
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 p-8">
+      {/* Main Container Card */}
+      <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-6xl mx-auto relative overflow-hidden">
+        {/* Decorative background shapes */}
+        <div className="absolute -top-10 -right-10 w-40 h-40 bg-green-200 rounded-full opacity-70 animate-pulse" />
+        <div className="absolute -bottom-10 -left-10 w-60 h-60 bg-green-300 rounded-full opacity-30" />
+
+        <h2 className="text-5xl font-extrabold text-green-700 mb-8 text-center relative z-10">
+          <span className="inline-block transform hover:scale-105 transition-transform">
+            Your Quiz History
+          </span>
         </h2>
 
+        {/* Loading Spinner */}
         {loading && (
-          <div className="flex justify-center items-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-green-600 border-opacity-75"></div>
-            <p className="ml-4 text-lg text-green-700 font-medium">Loading...</p>
+          <div className="flex flex-col items-center py-10 relative z-10">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-green-600 border-opacity-75 mb-4"></div>
+            <p className="text-lg text-green-700 font-medium">Loading...</p>
           </div>
         )}
 
-        {error && (
-          <div className="text-red-600 font-bold text-center py-4">
+        {/* Error */}
+        {error && !loading && (
+          <div className="text-red-600 font-bold text-center py-4 relative z-10">
             {error}
           </div>
         )}
 
+        {/* Table of Quizzes */}
         {!loading && !error && quizHistory.length > 0 && (
-          <table className="table-auto w-full bg-gray-100 rounded-lg overflow-hidden shadow-md">
-            <thead className="bg-green-600 text-white">
-              <tr>
-                <th className="px-6 py-4">Programming Language</th>
-                <th className="px-6 py-4">Date</th>
-                <th className="px-6 py-4">Score</th>
-                <th className="px-6 py-4">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {quizHistory.map((quiz) => (
-                <tr
-                  key={quiz.id}
-                  className="hover:bg-green-100 transition-all duration-200"
-                >
-                  <td className="px-6 py-4">{quiz.programmingLanguage}</td>
-                  <td className="px-6 py-4">{quiz.date}</td>
-                  <td className="px-6 py-4 text-center">{quiz.score}%</td>
-                  <td className="px-6 py-4 text-center">
-                    <button
-                      className="bg-green-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-600 transition duration-200"
-                      onClick={() =>
-                        fetchQuizDetails(quiz.id, {
-                          language: quiz.programmingLanguage,
-                          date: quiz.date,
-                          score: quiz.score,
-                        })
-                      }
-                    >
-                      View Details
-                    </button>
-                  </td>
+          <div className="overflow-x-auto relative z-10">
+            <table className="w-full table-auto border-collapse bg-gray-50 rounded-xl shadow">
+              <thead>
+                <tr className="bg-green-600 text-white text-left">
+                  <th className="p-4 font-semibold">Programming Language</th>
+                  <th className="p-4 font-semibold">Date</th>
+                  <th className="p-4 font-semibold text-center">Score</th>
+                  <th className="p-4 font-semibold text-center">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-green-100">
+                {quizHistory.map((quiz, idx) => (
+                  <tr
+                    key={quiz.id}
+                    className={`hover:bg-green-100 transition-colors ${
+                      idx % 2 === 0 ? "bg-white" : "bg-gray-50"
+                    }`}
+                  >
+                    <td className="p-4">{quiz.programmingLanguage}</td>
+                    <td className="p-4">{quiz.date}</td>
+                    <td className="p-4 text-center font-bold text-green-800">
+                      {quiz.score}%
+                    </td>
+                    <td className="p-4 text-center">
+                      <button
+                        className="inline-flex items-center bg-green-500 text-white font-medium px-4 py-2 rounded-lg shadow hover:bg-green-600 transition-transform transform hover:scale-105"
+                        onClick={() =>
+                          fetchQuizDetails(quiz.id, {
+                            language: quiz.programmingLanguage,
+                            date: quiz.date,
+                            score: quiz.score,
+                          })
+                        }
+                      >
+                        <svg
+                          className="w-5 h-5 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M15 10l4.553 4.553a2.121 2.121 0 010 3l-.086.086a2.121 2.121 0 01-3 0L12 13m0 0l-3 3m3-3l3-3m-3 3h.01"
+                          />
+                        </svg>
+                        Details
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
+        {/* No Quizzes */}
         {!loading && !error && quizHistory.length === 0 && (
-          <p className="text-center text-gray-700 font-medium">
+          <p className="text-center text-gray-700 font-medium py-6 relative z-10">
             No quiz history found. Start your first quiz now!
           </p>
         )}
       </div>
 
+      {/* Modal for Quiz Details */}
       {selectedQuiz && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-lg shadow-2xl w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto animate-fadeIn">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-3xl font-bold text-green-700">Quiz Details</h3>
-              <button
-                className="text-gray-600 hover:text-red-600 font-bold text-lg"
-                onClick={() => {
-                  setSelectedQuiz(null);
-                  setQuizDetails([]);
-                  setQuizMetadata({});
-                }}
-              >
-                ✖ Close
-              </button>
-            </div>
-            <div className="mb-6">
-              <p className="text-gray-800">
-                <strong>Programming Language:</strong> {quizMetadata.language}
-              </p>
-              <p className="text-gray-800">
-                <strong>Date:</strong> {quizMetadata.date}
-              </p>
-              <p className="text-gray-800">
-                <strong>Score:</strong> {Math.round(quizMetadata.score)}%
-              </p>
-              <p className="text-gray-800">
-                <strong>User Name:</strong> {user?.fullName || "N/A"}
-              </p>
-              <p className="text-gray-800">
-                <strong>Email:</strong> {user?.email || "N/A"}
-              </p>
-              {user?.phone && (
-                <p className="text-gray-800">
-                  <strong>Phone:</strong> {user.phone}
-                </p>
-              )}
-            </div>
-            <ul className="space-y-6">
-              {quizDetails.map((detail, index) => (
-                <li
-                  key={index}
-                  className={`p-6 rounded-lg shadow-md ${
-                    detail.yourAnswer === detail.correctAnswer
-                      ? "bg-green-100"
-                      : "bg-red-100"
-                  }`}
-                >
-                  <p className="font-semibold text-lg text-gray-800">
-                    <strong>Question:</strong> {detail.question}
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Dimmed Backdrop */}
+          <div
+            className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm cursor-pointer"
+            onClick={() => {
+              setSelectedQuiz(null);
+              setQuizDetails([]);
+              setQuizMetadata({});
+            }}
+          />
+
+          {/* Modal Container */}
+          <div className="relative z-10 w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto animate-fadeIn">
+            <div className="bg-gradient-to-r from-green-50 to-green-100 p-1 rounded-3xl shadow-2xl">
+              <div className="bg-white rounded-3xl p-8 relative">
+                {/* Floating decorative circles */}
+                <div className="absolute top-2 left-2 w-6 h-6 bg-green-200 rounded-full opacity-70 animate-ping" />
+                <div className="absolute top-2 left-2 w-6 h-6 bg-green-300 rounded-full opacity-50" />
+                <div className="absolute bottom-2 right-2 w-8 h-8 bg-green-200 rounded-full opacity-70 animate-ping" />
+                <div className="absolute bottom-2 right-2 w-8 h-8 bg-green-300 rounded-full opacity-50" />
+
+                {/* Title & Close */}
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-3xl font-extrabold text-green-700">
+                    Quiz Details
+                  </h3>
+                  <button
+                    className="w-10 h-10 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow transform hover:scale-105 transition duration-200"
+                    onClick={() => {
+                      setSelectedQuiz(null);
+                      setQuizDetails([]);
+                      setQuizMetadata({});
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Metadata */}
+                <div className="mb-6 space-y-2 text-lg text-gray-700">
+                  <p>
+                    <strong>Programming Language:</strong>{" "}
+                    {quizMetadata.language}
                   </p>
-                  <p className="mt-2 text-gray-800">
-                    <strong>Your Answer:</strong>{" "}
-                    <span
-                      className={`font-bold ${
-                        detail.yourAnswer === detail.correctAnswer
-                          ? "text-green-700"
-                          : "text-red-700"
-                      }`}
+                  <p>
+                    <strong>Date:</strong> {quizMetadata.date}
+                  </p>
+                  <p>
+                    <strong>Score:</strong> {Math.round(quizMetadata.score)}%
+                  </p>
+                  {/* <p>
+                    <strong>User Name:</strong> {user?.fullName || "N/A"}
+                  </p>
+                  <p>
+                    <strong>Email:</strong> {user?.email || "N/A"}
+                  </p> */}
+                  {/* {user?.phone && (
+                    <p>
+                      <strong>Phone:</strong> {user.phone}
+                    </p>
+                  )} */}
+                </div>
+
+                {/* Questions & Answers */}
+                <div className="space-y-6">
+                  {quizDetails.map((detail, index) => {
+                    const correct = detail.yourAnswer === detail.correctAnswer;
+                    return (
+                      <div
+                        key={index}
+                        className={`relative p-6 rounded-xl shadow-md flex items-start gap-4 transition-colors ${
+                          correct ? "bg-green-50" : "bg-red-50"
+                        }`}
+                      >
+                        {/* Icon for correctness */}
+                        <div
+                          className={`w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full shadow ${
+                            correct
+                              ? "bg-green-500 text-white"
+                              : "bg-red-500 text-white"
+                          }`}
+                        >
+                          {correct ? (
+                            <svg
+                              className="w-6 h-6"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          ) : (
+                            <svg
+                              className="w-6 h-6"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M6 18L18 6M6 6l12 12"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-bold text-xl text-gray-800 mb-1">
+                            Question:{" "}
+                            <span className="font-normal">{detail.question}</span>
+                          </p>
+                          <p className="text-gray-800">
+                            <strong>Your Answer:</strong>{" "}
+                            <span
+                              className={`font-bold ${
+                                correct ? "text-green-700" : "text-red-700"
+                              }`}
+                            >
+                              {detail.yourAnswer}
+                            </span>
+                          </p>
+                          <p className="text-gray-800">
+                            <strong>Correct Answer:</strong>{" "}
+                            <span className="font-bold text-blue-700">
+                              {detail.correctAnswer}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Download PDF Button */}
+                <div className="mt-8 text-right">
+                  <button
+                    onClick={downloadPDF}
+                    className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 transform hover:scale-105"
+                  >
+                    <svg
+                      className="w-5 h-5 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      viewBox="0 0 24 24"
                     >
-                      {detail.yourAnswer}
-                    </span>
-                  </p>
-                  <p className="mt-2 text-gray-800">
-                    <strong>Correct Answer:</strong>{" "}
-                    <span className="font-bold text-blue-700">
-                      {detail.correctAnswer}
-                    </span>
-                  </p>
-                </li>
-              ))}
-            </ul>
-            <button
-              onClick={downloadPDF}
-              className="mt-6 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300"
-            >
-              Download as PDF
-            </button>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 19l9-7-9-7-9 7 9 7z"
+                      />
+                    </svg>
+                    Download as PDF
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -30,27 +30,10 @@ import Footer from '../components/Footer';
 */
 function BigLoremIpsum({ paragraphs = 1 }) {
   const textBlock = `
-    Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
-    Sed tempor consectetur sapien, at blandit ex pretium a. 
-    Nunc ac posuere erat, et vulputate velit. Suspendisse potenti. 
-    Aenean quis metus neque. Fusce eget sapien nec massa semper finibus. 
-    Nullam scelerisque sem at neque vulputate, ac eleifend erat ullamcorper. 
-    Fusce efficitur lectus eget consequat efficitur. 
-    Pellentesque vel ex odio. Duis posuere lorem nibh, sed bibendum purus posuere ac. 
-    Fusce consequat pretium ex, a porttitor dolor gravida ac. 
-    In hac habitasse platea dictumst. Duis fermentum, sapien quis aliquet cursus, 
-    nisi elit blandit lectus, eget fermentum mauris nisi sed felis. 
-    Vestibulum vehicula luctus quam, in egestas metus dapibus sed. 
-    Suspendisse varius sit amet ante quis lacinia. Phasellus quis fringilla orci. 
-    Nunc dictum dignissim elit, at ultricies tortor tincidunt non. 
-    In hac habitasse platea dictumst. 
-    Curabitur at vehicula turpis, eget auctor tortor. 
-    Nunc id feugiat elit, consequat viverra nulla. 
-    Pellentesque commodo risus nisl, at accumsan enim efficitur non. 
-    Integer at placerat nisi. Vivamus non eros sit amet diam vulputate vehicula. 
-    Fusce vestibulum mattis odio eget ultricies. 
-    Phasellus condimentum, justo at varius facilisis, nisl sem dignissim magna, 
-    quis pellentesque quam eros non purus. 
+The École Marocaine des Sciences de l'Ingénieur (EMSI) is a premier engineering institution in Morocco, dedicated to providing high-quality education that seamlessly integrates academic theory with practical application. With over 37 years of experience, EMSI has established 18 campuses across major cities, including Casablanca, Rabat, Marrakech, Tangier, and Fes, and has been recognized by the state for its academic excellence. The institution boasts a vibrant community of 13,000 engineering students and a network of 18,000 alumni. 
+EMSI.MA
+
+EMSI offers a diverse range of engineering programs tailored to meet the evolving demands of the industry. These programs encompass fields such as Computer Engineering and Networks, Financial Engineering, Industrial Engineering, Civil Engineering (Construction and Public Works), Electrical Engineering and Intelligent Systems, and Automation Engineering and Industrial Computing. Each curriculum is designed to equip students with the necessary skills and knowledge to excel in their respective domains. 
   `;
   const paragraphsArray = Array.from({ length: paragraphs }, () => textBlock);
 
@@ -152,11 +135,11 @@ const emsiPartnerships = [
 
 const extraImages = [
   {
-    src: 'https://images.unsplash.com/photo-1596495577886-dcee50f85dfc?auto=format&fit=crop&w=600&q=60',
+    src: '/images/campus.jpg',
     alt: 'EMSI campus shot',
   },
   {
-    src: 'https://images.unsplash.com/photo-1584697964154-f2f1cf67c0b3?auto=format&fit=crop&w=600&q=60',
+    src: '/images/students.jpg',
     alt: 'Students in a classroom',
   },
   {
@@ -164,7 +147,7 @@ const extraImages = [
     alt: 'Laboratory / Tech setting',
   },
   {
-    src: 'https://images.unsplash.com/photo-1547658718-1177e720f32d?auto=format&fit=crop&w=600&q=60',
+    src: '/images/group.jpg',
     alt: 'Group of students collaborating on laptops',
   },
 ];
@@ -183,11 +166,11 @@ const extraImages = [
  * e.g. 37 ans d'expérience, 18 Campus, etc.
  */
 const statsData = [
-  { icon: '🏆', finalValue: 37, headline: 'ans', subtext: "d'expérience" },
-  { icon: '🏛️', finalValue: 18, headline: 'Campus', subtext: '' },
-  { icon: '🤝', finalValue: 1, headline: 'Reconnue', subtext: "par l'état" },
-  { icon: '🎓', finalValue: 18000, headline: 'Lauréats', subtext: '' },
-  { icon: '👥', finalValue: 13000, headline: 'Élèves', subtext: 'ingénieurs' },
+  { icon: <span className="green-emoji">🏆</span>, finalValue: 37, headline: 'ans', subtext: "d'expérience" },
+  { icon: <span className="green-emoji">🏛️</span>, finalValue: 18, headline: 'Campus', subtext: '' },
+  { icon: <span className="green-emoji">🤝</span>, finalValue: 1, headline: 'Reconnue', subtext: "par l'état" },
+  { icon: <span className="green-emoji">🎓</span>, finalValue: 18000, headline: 'Lauréats', subtext: '' },
+  { icon: <span className="green-emoji">👥</span>, finalValue: 13000, headline: 'Élèves', subtext: 'ingénieurs' },
 ];
 
 /**
@@ -570,7 +553,7 @@ const LandingPage = () => {
               <BigLoremIpsum paragraphs={1} />
             </div>
             <img
-              src="https://images.unsplash.com/photo-1573497019195-9d18dbfa6cf0?auto=format&fit=crop&w=600&q=60"
+              src="/images/ResearchLab.jpg"
               alt="Research Lab Scene"
               className="rounded shadow-md md:w-1/2"
             />
@@ -591,29 +574,29 @@ const LandingPage = () => {
           <div className="grid md:grid-cols-4 gap-8 px-6">
             {[
               {
-                name: 'Sara M.',
+                name: 'Soufian Otmane',
                 feedback:
                   'EMSI PREPARATOR has transformed my learning experience. Highly recommended!',
                 avatar:
-                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=80&q=60',
+                  '/images/soufian.jpg',
               },
               {
-                name: 'Adam K.',
+                name: 'Med Said Moufid',
                 feedback: 'The AI-powered tools make test creation a breeze!',
                 avatar:
-                  'https://images.unsplash.com/photo-1603415526960-f0af22499259?auto=format&fit=crop&w=80&q=60',
+                  '/images/said.jpg',
               },
               {
-                name: 'Zineb R.',
+                name: 'Oubram Soufiane',
                 feedback: 'A user-friendly interface with everything I need.',
                 avatar:
-                  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&q=60',
+                  '/images/oubram.jpg',
               },
               {
-                name: 'Hamza B.',
+                name: 'Boulaich Iliass',
                 feedback: 'I love the ability to track my progress over time.',
                 avatar:
-                  'https://images.unsplash.com/photo-1544723795-3fb6469f43ef?auto=format&fit=crop&w=80&q=60',
+                  '/images/ilias.jpg',
               },
             ].map((testimonial, index) => (
               <div
@@ -689,7 +672,7 @@ const LandingPage = () => {
       </LazySection>
 
       {/* Future of EMSI PREPARATOR */}
-      <LazySection backgroundImage="https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1600&q=80">
+      <LazySection backgroundImage="https://images.unsplash.com/photo--2a5b3b417ebb?auto=format&fit=crop&w=1600&q=80">
         <div className="relative bg-gray-50 bg-opacity-90 p-8 max-w-5xl mx-auto rounded-xl shadow-md">
           <h2 className="text-3xl font-extrabold text-green-700 mb-6 text-center">
             Future of EMSI PREPARATOR
@@ -700,7 +683,7 @@ const LandingPage = () => {
               <BigLoremIpsum paragraphs={1} />
             </div>
             <img
-              src="https://images.unsplash.com/photo-1584697964154-f2f1cf67c0b3?auto=format&fit=crop&w=600&q=60"
+              src="/images/futur.jpg"
               alt="Future Tech"
               className="rounded shadow-md md:w-1/2"
             />
@@ -721,7 +704,7 @@ const LandingPage = () => {
           <BigLoremIpsum paragraphs={4} />
           <div className="flex justify-center mt-6">
             <img
-              src="https://images.unsplash.com/photo-1547658718-1177e720f32d?auto=format&fit=crop&w=600&q=60"
+              src="/images/groupOf.jpg"
               alt="Students group"
               className="rounded shadow-md w-full md:w-2/3"
             />
